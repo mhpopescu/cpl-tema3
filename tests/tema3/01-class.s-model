@@ -245,6 +245,7 @@ F_protObj:
     .word   11
     .word   3
     .word   F_dispTab
+    .globl  heap_start
 
 Object_dispTab:
     .word   Object.abort

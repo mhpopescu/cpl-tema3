@@ -4,6 +4,7 @@ import cool.structures.DefaultScope;
 import cool.structures.Scope;
 import cool.structures.SymbolTable;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -59,5 +60,18 @@ public class ClassSymbol extends MethodSymbol {
     @Override
     public ClassSymbol getClassSym() {
         return this;
+    }
+
+    public List<String> getAllMethods() {
+        List<String> ret;
+
+        if (parent == null || parent == SymbolTable.globals)
+            ret = new ArrayList<>();
+        else
+            ret = ((ClassSymbol)parent).getAllMethods();
+
+        for (var x : symbols.keySet())
+            ret.add(getName() + "." + x);
+        return ret;
     }
 }

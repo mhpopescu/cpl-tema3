@@ -2,6 +2,8 @@ package cool.structures;
 
 import java.io.File;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.Map;
 
 import cool.ast.nodes.ClassDef;
@@ -14,7 +16,7 @@ import cool.parser.CoolParser;
 
 public class SymbolTable {
     public static Map<Symbol, INode> symbolsNode = new HashMap<>();
-    public static Map<TypeSymbol, ClassSymbol> types = new HashMap<>();
+    public static Map<TypeSymbol, ClassSymbol> types = new LinkedHashMap<>();
     public static Scope globals;
     public static ClassSymbol object;
 

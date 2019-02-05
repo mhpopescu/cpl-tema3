@@ -1,0 +1,177 @@
+sequence(x) ::= "<x; separator=\"\n\">"
+
+str_const(str_c) ::= "<sequence(str_c)>"
+
+str_c(idStr, structSz, idIntSz, val) ::= <<
+str_const<idStr>:
+    .word   3
+    .word   <structSz>
+    .word   String_dispTab
+    .word   int_const<idIntSz>
+    .asciiz "<val>"
+    .align  2
+>>
+
+int_const(int_c) ::= "<sequence(int_c)>"
+
+int_c(id, val) ::= <<
+int_const<id>:
+    .word   2
+    .word   4
+    .word   Int_dispTab
+    .word   <val>
+>>
+
+bool_const() ::= <<
+bool_const0:
+    .word   4
+    .word   4
+    .word   Bool_dispTab
+    .word   0
+bool_const1:
+    .word   4
+    .word   4
+    .word   Bool_dispTab
+    .word   1
+>>
+
+class_nameTab(id) ::= <<
+class_nameTab:
+    <id:{id | .word   str_const<id>}; separator="\n">
+>>
+
+class_objTab(x) ::= <<
+class_objTab:
+    <x:{x | .word   <x>_protObj<\n>.word   <x>_init}; separator="\n">
+>>
+
+class_protObj(protObj) ::= <<
+Object_protObj:
+    .word   0
+    .word   3
+    .word   Object_dispTab
+Int_protObj:
+    .word   1
+    .word   4
+    .word   Int_dispTab
+    .word   0
+String_protObj:
+    .word   2
+    .word   5
+    .word   String_dispTab
+    .word   int_const0
+    .asciiz ""
+    .align  3
+Bool_protObj:
+    .word   3
+    .word   4
+    .word   Bool_dispTab
+    .word   0
+IO_protObj:
+    .word   4
+    .word   3
+    .word   IO_dispTab
+
+<protObj; separator="\n">
+>>
+
+protObj(className, tag) ::= <<
+<className>_protObj:
+    .word   <tag>
+    .word   3
+    .word   <className>_dispTab
+>>
+
+class_dispTab(c_dispTab) ::= "<c_dispTab; separator=\"\n\">"
+
+c_dispTab(className, method) ::= <<
+<className>_dispTab:
+    <method:{method | .word   <method>}; separator="\n">
+>>
+
+class_init(c_init) ::= <<
+<c_init("Object",[])>
+<c_init; separator="\n">
+>>
+
+c_init(className, parent) ::= <<
+<className>_init:
+    addiu   $sp $sp -12
+    sw      $fp 12($sp)
+    sw      $s0 8($sp)
+    sw      $ra 4($sp)
+    addiu   $fp $sp 4
+    move    $s0 $a0
+<if(parent)>    jal     <parent>_init<endif>
+    move    $a0 $s0
+    lw      $fp 12($sp)
+    lw      $s0 8($sp)
+    lw      $ra 4($sp)
+    addiu   $sp $sp 12
+    jr      $ra
+>>
+
+class_method() ::= <<
+Main.main:
+    addiu   $sp $sp -12
+    sw      $fp 12($sp)
+    sw      $s0 8($sp)
+    sw      $ra 4($sp)
+    addiu   $fp $sp 4
+    move    $s0 $a0
+    la      $a0 int_const0
+    lw      $fp 12($sp)
+    lw      $s0 8($sp)
+    lw      $ra 4($sp)
+    addiu   $sp $sp 12
+    jr      $ra
+>>
+
+program(objTab, class_protObj, class_dispTab, class_init, str_const, int_const, class_nameTab) ::= <<
+    .data
+    .align 2
+    .globl  class_nameTab
+    .globl  Int_protObj
+    .globl  String_protObj
+    .globl  bool_const0
+    .globl  bool_const1
+    .globl  Main_protObj
+    .globl  _int_tag
+    .globl  _string_tag
+    .globl  _bool_tag
+_int_tag:
+    .word   2
+_string_tag:
+    .word   3
+_bool_tag:
+    .word   4
+
+<str_const>
+
+<int_const>
+
+<bool_const()>
+
+<class_nameTab>
+
+<class_objTab(objTab)>
+
+<class_protObj>
+
+<class_dispTab>
+
+    .globl  heap_start
+
+heap_start:
+    .word   0
+    .text
+    .globl Int_init
+    .globl String_init
+    .globl Bool_init
+    .globl Main_init
+    .globl Main.main
+
+<class_init>
+
+<class_method()>
+>>

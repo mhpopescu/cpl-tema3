@@ -14,7 +14,8 @@
 #	fi
 #done
 
-CLASSPATH=.:/usr/local/lib/antlr-4.7.1-complete.jar
+CLASSPATH=out/production/Tema3:lib/antlr-4.7.1-complete.jar
+# javac -cp $CLASSPATH src/cool/compiler/Compiler.java
 
 passed=0
 for source_file in ./tests/tema3/*.cl; do

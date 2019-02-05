@@ -2,14 +2,22 @@ package cool.compiler;
 
 import cool.ast.nodes.*;
 import cool.ast.visitor.*;
+import cool.structures.Scope;
+import cool.structures.symbol.ClassSymbol;
+import cool.structures.symbol.Symbol;
+import cool.structures.symbol.TypeSymbol;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
 
 import cool.lexer.*;
 import cool.parser.*;
 import cool.structures.SymbolTable;
+import org.stringtemplate.v4.ST;
+import org.stringtemplate.v4.STGroupFile;
 
 import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Compiler {
     // Annotates class ast with the names of files where they are defined.
@@ -139,10 +147,100 @@ public class Compiler {
         TypeCheck4Visitor v4 = new TypeCheck4Visitor();
         ast.accept(v4);
 
-        
         if (SymbolTable.hasSemanticErrors()) {
             System.err.println("Compilation halted");
             return;
         }
+
+        var group = new STGroupFile("cgen.stg");
+        ST program = group.getInstanceOf("program");
+        CodeGenVisitor vCodeGen = new CodeGenVisitor();
+        vCodeGen.st = program;
+        ast.accept(vCodeGen);
+
+        List<TypeSymbol> classes = new ArrayList<>(SymbolTable.types.keySet());
+
+        for (var x : classes)
+            if (!x.getName().equals("SELF_TYPE"))
+                program.add("objTab", x.getName());
+
+
+        ST class_protObj = group.getInstanceOf("class_protObj");
+        for (int i = 6; i < classes.size(); ++i) {
+            ST protObj = group.getInstanceOf("protObj");
+            protObj.add("className", classes.get(i).getName());
+            protObj.add("tag", i-1);
+            class_protObj.add("protObj", protObj);
+        }
+        program.add("class_protObj", class_protObj);
+
+
+        ST class_dispTab = group.getInstanceOf("class_dispTab");
+        for (var x : classes)
+            if (!x.getName().equals("SELF_TYPE")) {
+                ST c_dispTab = group.getInstanceOf("c_dispTab");
+                c_dispTab.add("className", x.getName());
+                List<String> methods = SymbolTable.types.get(x).getAllMethods();
+                c_dispTab.add("method", methods);
+                class_dispTab.add("c_dispTab", c_dispTab);
+            }
+        program.add("class_dispTab", class_dispTab);
+
+
+        ST class_init = group.getInstanceOf("class_init");
+        for (var x : classes)
+            if (!x.getName().equals("SELF_TYPE") && !x.getName().equals("Object")) {
+                ST c_init = group.getInstanceOf("c_init");
+                c_init.add("className", x.getName());
+                c_init.add("parent", SymbolTable.types.get(x).parent.getClassSym().getName());
+                class_init.add("c_init", c_init);
+            }
+        program.add("class_init", class_init);
+
+
+        List<String> strings = new ArrayList<>();
+        List<Integer> integers = new ArrayList<>();
+
+        strings.add("");
+
+        for (var x : classes)
+            if (!x.getName().equals("SELF_TYPE"))
+                strings.add(x.getName());
+
+        ST class_nameTab = group.getInstanceOf("class_nameTab");
+        for (int i = 0; i < strings.size(); ++i)
+            class_nameTab.add("id", i);
+        program.add("class_nameTab", class_nameTab);
+
+        ST str_const = group.getInstanceOf("str_const");
+        for (int i = 0; i < strings.size(); ++i) {
+            ST str_c = group.getInstanceOf("str_c");
+            str_c.add("idStr", i);
+            str_c.add("val", strings.get(i));
+
+            int sz = strings.get(i).length();
+            if (!integers.contains(sz))
+                integers.add(sz);
+            str_c.add("idIntSz", integers.indexOf(sz));
+            int structSz =  (sz + 1) / 4 + 4;
+            if ((sz + 1) % 4 != 0)
+                structSz++;
+            str_c.add("structSz", structSz);
+            str_const.add("str_c", str_c);
+        }
+        program.add("str_const", str_const);
+
+
+        ST int_const = group.getInstanceOf("int_const");
+        for (int i = 0; i < integers.size(); ++i) {
+            ST int_c = group.getInstanceOf("int_c");
+            int_c.add("id", i);
+            int_c.add("val", integers.get(i));
+            int_const.add("int_c", int_c);
+        }
+        program.add("int_const", int_const);
+
+
+        System.out.println(program.render());
     }
 }
